@@ -645,7 +645,7 @@ void Viewer::sendPoint(bool touchEnd, Point result = Point())
 	}
 }
 
-const int PRESS_THRESHOLD = 40000;
+const int PRESS_THRESHOLD = 50000;
 const int NORMAL_LOWERBOUND = 18000;
 const int NORMAL_UPPERBOUND = 30000;
 
@@ -660,7 +660,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 
 	int sum = matSum<float>(input);                    //计算该帧电容和作为判断帧可靠性的依据
 	cout << "sum = " << sum << " last sum = " << lastsum << endl;
-	if (lastsum >= NORMAL_LOWERBOUND && lastsum <= NORMAL_UPPERBOUND && sum - lastsum > PRESS_THRESHOLD) {
+	if (lastsum < PRESS_THRESHOLD && sum >= PRESS_THRESHOLD) {
 		cout << "double click!!!!" << endl;
 		m_inject.touch_double_click(0, 0); 
 	}
