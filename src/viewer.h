@@ -18,13 +18,9 @@
 #include <stdio.h>
 #include <time.h>
 #include <windows.h>
-#include <gl/gl.h>
-#include <gl/glu.h>
-#include <gl/glut.h>
 #include <cv.h>
 #include <highgui.h>
 #include <cv.hpp>
-#include <core.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>

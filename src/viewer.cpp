@@ -405,13 +405,16 @@ float Viewer::calculateColor(int value) {
 	return color;
 }
 
+/*
 void Viewer::displayText(void *font, char *text, float x, float y) {
 	glRasterPos2f(x, y);
 	for (int i = 0; i < strlen(text); ++i) {
 		glutBitmapCharacter(font, text[i]);
 	}
 }
+*/
 
+/*
 void Viewer::displayCapacity(int value, int region, int isStable, float x, float y) {
 	if (value <= CAPACITY_NOISE_UPPER_BOUND) {
 		//value = 0;
@@ -440,7 +443,9 @@ void Viewer::displayCapacity(int value, int region, int isStable, float x, float
 	}
 	TEXT(GLUT_BITMAP_TIMES_ROMAN_10, x, y, "%d", value);
 }
+*/
 
+/*
 void Viewer::displayFrame(Frame &frame, float dx, float dy) {
 	glPolygonMode(GL_FRONT, GL_FILL);
 	glPolygonMode(GL_BACK, GL_FILL);
@@ -511,6 +516,7 @@ void Viewer::displayFrame(Frame &frame, float dx, float dy) {
 		}
 	}
 }
+*/
 
 void Viewer::gravityCenter(Mat src, Point &cent) {
 	long xsum = 0;
@@ -639,6 +645,10 @@ void Viewer::sendPoint(bool touchEnd, Point result = Point())
 	}
 }
 
+const int PRESS_THRESHOLD = 40000;
+const int NORMAL_LOWERBOUND = 18000;
+const int NORMAL_UPPERBOUND = 30000;
+
 void Viewer::displayFrameCV(Frame &frame) {
 	bool has_find_pattern;
 	Rect patternRect;
@@ -649,6 +659,11 @@ void Viewer::displayFrameCV(Frame &frame) {
 	input.convertTo(input, CV_32F);
 
 	int sum = matSum<float>(input);                    //计算该帧电容和作为判断帧可靠性的依据
+	cout << "sum = " << sum << " last sum = " << lastsum << endl;
+	if (lastsum >= NORMAL_LOWERBOUND && lastsum <= NORMAL_UPPERBOUND && sum - lastsum > PRESS_THRESHOLD) {
+		cout << "double click!!!!" << endl;
+		m_inject.touch_double_click(0, 0); 
+	}
 
 	Point newsum(frame.frameID, sum);
 	sums_buffer.push_back(newsum);
@@ -870,6 +885,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 	lastsum = sum;
 }
 
+/*
 void Viewer::display() {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
@@ -998,7 +1014,9 @@ void Viewer::display() {
 	glFlush();
 	glutSwapBuffers();
 }
+*/
 
+/*
 void Viewer::special(int key, int x, int y) {
 	if (viewer_type == 'R') {
 		switch (key) {
@@ -1025,6 +1043,7 @@ void Viewer::special(int key, int x, int y) {
 		}
 	}
 }
+*/
 
 void Viewer::keyboard(unsigned char key, int x, int y) {
 	switch (key) {
