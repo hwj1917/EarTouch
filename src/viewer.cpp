@@ -645,9 +645,10 @@ void Viewer::sendPoint(bool touchEnd, Point result = Point())
 	}
 }
 
-const int PRESS_THRESHOLD = 50000;
+const int PRESS_THRESHOLD = 40000;
 const int NORMAL_LOWERBOUND = 18000;
 const int NORMAL_UPPERBOUND = 30000;
+int touchSum;
 
 void Viewer::displayFrameCV(Frame &frame) {
 	bool has_find_pattern;
@@ -660,7 +661,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 
 	int sum = matSum<float>(input);                    //计算该帧电容和作为判断帧可靠性的依据
 	cout << "sum = " << sum << " last sum = " << lastsum << endl;
-	if (lastsum < PRESS_THRESHOLD && sum >= PRESS_THRESHOLD) {
+	if (lastsum < touchSum + PRESS_THRESHOLD && sum >= touchSum + PRESS_THRESHOLD) {
 		cout << "double click!!!!" << endl;
 		m_inject.touch_double_click(0, 0); 
 	}
@@ -697,6 +698,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 
 		if (!last_dirty)                                         //触摸开始
 		{
+			touchSum = sum;
 			frame_count = 0;
 			has_find_pattern = findPattern(binaryImage, patternRect, firstTouch);
 			////////////////////////////////////for show the rectangle///////////////////////////////
