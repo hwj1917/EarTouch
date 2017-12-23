@@ -74,6 +74,8 @@ int Viewer::stablesum = 1000;
 int Viewer::leavesum = 0;
 int Viewer::dirtylow = 50000;
 
+vector<double> lastClockwiseAngles = vector<double>();
+vector<double> lastAnticlockwiseAngles = vector<double>();
 
 Mat Viewer::pattern, Viewer::lanc(560, 320, CV_32F), Viewer::Image[2];
 
@@ -650,6 +652,31 @@ const int NORMAL_LOWERBOUND = 18000;
 const int NORMAL_UPPERBOUND = 30000;
 int touchSum;
 
+bool isClockwise(double last, double now) {
+	bool ans = now > last;
+	if (abs(last - now) > 45) {
+		ans = !ans;
+	}
+	return ans;
+}
+
+double getAngleBetween(double last, double now) {
+	bool flag = now > last;
+	if (abs(last - now) > 45) {
+		flag = !flag;
+	}
+	double ans = now - last;
+	if (abs(last - now) > 45) {
+		if (flag) {
+			ans += 90;
+		}
+		else {
+			ans -= 90;
+		}
+	}
+	return ans;
+}
+
 void Viewer::displayFrameCV(Frame &frame) {
 	bool has_find_pattern;
 	Rect patternRect;
@@ -660,7 +687,6 @@ void Viewer::displayFrameCV(Frame &frame) {
 	input.convertTo(input, CV_32F);
 
 	int sum = matSum<float>(input);                    //计算该帧电容和作为判断帧可靠性的依据
-	cout << "sum = " << sum << " last sum = " << lastsum << endl;
 	if (lastsum < touchSum + PRESS_THRESHOLD && sum >= touchSum + PRESS_THRESHOLD) {
 		cout << "double click!!!!" << endl;
 		m_inject.touch_double_click(0, 0); 
@@ -695,6 +721,69 @@ void Viewer::displayFrameCV(Frame &frame) {
 		binaryImage.convertTo(binaryImage, CV_8U);
 		imshow("image", binaryImage);
 		waitKey(5);
+
+		//here we go
+		vector<vector<Point>> contours;
+		vector<Vec4i> hierarchy;
+		findContours(binaryImage, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+		Rect rectsum;
+		vector<Point> save;
+		for (int i = 0; i < contours.size(); i++) {
+			//cout << "***   " << i << contours[i].size() << endl << endl;
+			if (contours[i].size() > 20 && contours[i].size()) {
+				Rect recti = boundingRect(contours.at(i));
+				rectsum = rectsum | recti;
+				save.insert(save.end(), contours.at(i).begin(), contours.at(i).end());
+			}
+		}
+		firstTouch = minAreaRect(save);
+		Point2f vertices[4];
+		firstTouch.points(vertices);
+		Mat show3 = binaryImage.clone();
+		for (int i = 0; i < 4; i++) {
+			line(show3, vertices[i], vertices[(i + 1) % 4], 255, 1);
+		}
+		imshow("now", show3);
+		cout << "angle = " << firstTouch.angle << endl;
+		waitKey(5);
+
+		if (lastClockwiseAngles.size() == 0) {
+			lastClockwiseAngles.push_back(firstTouch.angle);
+		}
+		else if (isClockwise(lastClockwiseAngles[lastClockwiseAngles.size() - 1], firstTouch.angle)) {
+			lastClockwiseAngles.push_back(firstTouch.angle);
+			double delta = 0;
+			for (int i = 1; i < lastClockwiseAngles.size(); ++i)
+				delta += getAngleBetween(lastClockwiseAngles[i - 1], lastClockwiseAngles[i]);
+			delta = abs(delta);
+			if (lastClockwiseAngles.size() >= 5 && delta >= 20) {
+				cout << "clockwise!" << endl;
+				lastClockwiseAngles.clear();
+			}
+		}
+		else {
+			lastClockwiseAngles.clear();
+		}
+
+		if (lastAnticlockwiseAngles.size() == 0) {
+			lastAnticlockwiseAngles.push_back(firstTouch.angle);
+		}
+		else if (!isClockwise(lastAnticlockwiseAngles[lastAnticlockwiseAngles.size() - 1], firstTouch.angle)) {
+			lastAnticlockwiseAngles.push_back(firstTouch.angle);
+			double delta = 0;
+			for (int i = 1; i < lastAnticlockwiseAngles.size(); ++i)
+				delta += getAngleBetween(lastAnticlockwiseAngles[i - 1], lastAnticlockwiseAngles[i]);
+			delta = abs(delta);
+			if (lastAnticlockwiseAngles.size() >= 5 && delta >= 20) {
+				cout << "anticlockwise!" << endl;
+				lastAnticlockwiseAngles.clear();
+			}
+		}
+		else {
+			lastAnticlockwiseAngles.clear();
+		}
+
+		//here we stop
 
 		if (!last_dirty)                                         //触摸开始
 		{
