@@ -758,6 +758,13 @@ void Viewer::displayFrameCV(Frame &frame) {
 			delta = abs(delta);
 			if (lastClockwiseAngles.size() >= 5 && delta >= 20) {
 				cout << "clockwise!" << endl;
+				Viewer::m_inject.touch_down(500, 1000);
+				Sleep(5);
+				Viewer::m_inject.touch_move(800, 1000);
+				Sleep(5);
+				Viewer::m_inject.touch_move(1100, 1000);
+				Sleep(5);
+				Viewer::m_inject.touch_up();
 				lastClockwiseAngles.clear();
 			}
 		}
@@ -776,6 +783,13 @@ void Viewer::displayFrameCV(Frame &frame) {
 			delta = abs(delta);
 			if (lastAnticlockwiseAngles.size() >= 5 && delta >= 20) {
 				cout << "anticlockwise!" << endl;
+				Viewer::m_inject.touch_down(1100, 1000);
+				Sleep(5);
+				Viewer::m_inject.touch_move(800, 1000);
+				Sleep(5);
+				Viewer::m_inject.touch_move(500, 1000);
+				Sleep(5);
+				Viewer::m_inject.touch_up();
 				lastAnticlockwiseAngles.clear();
 			}
 		}

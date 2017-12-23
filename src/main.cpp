@@ -33,7 +33,9 @@ void viewer_udpinit() {
 int main(int argc, char **argv) {
 	//UDP
 	//viewer_udpinit();
-	//Picker
+	//Picke
+
+
 	_argc = argc, _argv = argv;
 	pthread_t threads[2];
 	pthread_mutex_init(&Picker::frames_mutex, NULL);

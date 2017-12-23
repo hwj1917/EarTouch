@@ -45,7 +45,7 @@ void InjectEventController::vibrate()
 {
 	if (time(NULL) - last_vibrate > 2)
 	{
-		WinExec("adb shell am startservice -n com.hwj.test/com.hwj.test.MyService", SW_NORMAL);
+		WinExec("adb shell am startservice -n com.hwj.foreartouch/com.hwj.foreartouch.MyService", SW_NORMAL);
 		last_vibrate = time(NULL);
 	}
 }
