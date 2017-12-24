@@ -649,7 +649,7 @@ void Viewer::sendPoint(bool touchEnd, Point result = Point())
 
 const int PRESS_THRESHOLD = 40000;
 const int NORMAL_LOWERBOUND = 18000;
-const int NORMAL_UPPERBOUND = 30000;
+const int NORMAL_UPPERBOUND = 35000;
 int touchSum;
 
 bool isClockwise(double last, double now) {
@@ -687,6 +687,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 	input.convertTo(input, CV_32F);
 
 	int sum = matSum<float>(input);                    //计算该帧电容和作为判断帧可靠性的依据
+	cout << "sum = " << sum << endl;
 	if (lastsum < touchSum + PRESS_THRESHOLD && sum >= touchSum + PRESS_THRESHOLD) {
 		cout << "double click!!!!" << endl;
 		m_inject.touch_double_click(0, 0); 
@@ -756,7 +757,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 			for (int i = 1; i < lastClockwiseAngles.size(); ++i)
 				delta += getAngleBetween(lastClockwiseAngles[i - 1], lastClockwiseAngles[i]);
 			delta = abs(delta);
-			if (lastClockwiseAngles.size() >= 5 && delta >= 20) {
+			if (lastClockwiseAngles.size() >= 6 && delta >= 15) {
 				cout << "clockwise!" << endl;
 				Viewer::m_inject.touch_down(500, 1000);
 				Sleep(5);
@@ -781,7 +782,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 			for (int i = 1; i < lastAnticlockwiseAngles.size(); ++i)
 				delta += getAngleBetween(lastAnticlockwiseAngles[i - 1], lastAnticlockwiseAngles[i]);
 			delta = abs(delta);
-			if (lastAnticlockwiseAngles.size() >= 5 && delta >= 20) {
+			if (lastAnticlockwiseAngles.size() >= 6 && delta >= 15) {
 				cout << "anticlockwise!" << endl;
 				Viewer::m_inject.touch_down(1100, 1000);
 				Sleep(5);
@@ -796,6 +797,8 @@ void Viewer::displayFrameCV(Frame &frame) {
 		else {
 			lastAnticlockwiseAngles.clear();
 		}
+
+		return;
 
 		//here we stop
 
