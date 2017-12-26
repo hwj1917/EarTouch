@@ -579,7 +579,7 @@ bool Viewer::judgeDirty(int sum)
 
 	if (last_dirty) {
 		//change stablesum to dirtylow
-		if ((sum < 10000) || ((leavesum < -8000) && (sum < dirtylow) && (sum - lastsum < -3000))) {
+		if ((sum < 10000) || ((leavesum < -8000) && (sum < dirtylow) && (sum - lastsum < -10000))) {
 			isDirty = false;
 		}
 		else {
@@ -604,7 +604,7 @@ void Viewer::sendPoint(bool touchEnd, Point result = Point())
 			//sent(p.x, p.y, "down");
 			realpoints_buffer.push_back(p);
 		}
-
+	
 		m_inject.touch_up();
 
 		points_buffer.clear();
@@ -651,6 +651,7 @@ const int PRESS_THRESHOLD = 40000;
 const int NORMAL_LOWERBOUND = 18000;
 const int NORMAL_UPPERBOUND = 35000;
 int touchSum;
+bool spinFlag = false, wrongFrameFlag = true;
 
 bool isClockwise(double last, double now) {
 	bool ans = now > last;
@@ -688,9 +689,23 @@ void Viewer::displayFrameCV(Frame &frame) {
 
 	int sum = matSum<float>(input);                    //计算该帧电容和作为判断帧可靠性的依据
 	//cout << "sum = " << sum << endl;
+
+	if (lastsum - sum > 20000 && wrongFrameFlag)
+	{
+		wrongFrameFlag = false;
+		return;
+	}
+
 	if (lastsum < touchSum + PRESS_THRESHOLD && sum >= touchSum + PRESS_THRESHOLD) {
 		cout << "double click!!!!" << endl;
 		m_inject.touch_double_click(0, 0); 
+
+		sendPoint(true);
+		spinFlag = false;
+		last_dirty = false;
+		deltasum = sum - lastsum;
+		lastsum = sum;
+		return;
 	}
 
 	Point newsum(frame.frameID, sum);
@@ -720,8 +735,8 @@ void Viewer::displayFrameCV(Frame &frame) {
 		resize(input, lanc, Size(), 20.0, 20.0, INTER_LANCZOS4);
 		threshold(lanc, binaryImage, 200, 0, THRESH_TOZERO);        //gray
 		binaryImage.convertTo(binaryImage, CV_8U);
-		imshow("image", binaryImage);
-		waitKey(5);
+		//imshow("image", binaryImage);
+		//waitKey(5);
 
 		//here we go
 		if (sum < touchSum + PRESS_THRESHOLD)
@@ -746,9 +761,9 @@ void Viewer::displayFrameCV(Frame &frame) {
 			for (int i = 0; i < 4; i++) {
 				line(show3, vertices[i], vertices[(i + 1) % 4], 255, 1);
 			}
-			imshow("now", show3);
-			cout << "angle = " << firstTouch.angle << endl;
-			waitKey(5);
+			//imshow("now", show3);
+			//cout << "angle = " << firstTouch.angle << endl;
+			//waitKey(5);
 
 			if (lastClockwiseAngles.size() == 0) {
 				lastClockwiseAngles.push_back(firstTouch.angle);
@@ -759,16 +774,18 @@ void Viewer::displayFrameCV(Frame &frame) {
 				for (int i = 1; i < lastClockwiseAngles.size(); ++i)
 					delta += getAngleBetween(lastClockwiseAngles[i - 1], lastClockwiseAngles[i]);
 				delta = abs(delta);
-				if (lastClockwiseAngles.size() >= 6 && delta >= 15) {
+				if (lastClockwiseAngles.size() >= 6 && delta >= (spinFlag ? 15 : 30)) {
 					cout << "clockwise!" << endl;
-					Viewer::m_inject.touch_down(500, 1000);
+					if (!spinFlag) m_inject.touch_up();
+					m_inject.touch_down(500, 1000);
 					Sleep(5);
-					Viewer::m_inject.touch_move(800, 1000);
+					m_inject.touch_move(800, 1000);
 					Sleep(5);
-					Viewer::m_inject.touch_move(1100, 1000);
+					m_inject.touch_move(1100, 1000);
 					Sleep(5);
-					Viewer::m_inject.touch_up();
+					m_inject.touch_up();
 					lastClockwiseAngles.clear();
+					spinFlag = true;
 				}
 			}
 			else {
@@ -784,16 +801,18 @@ void Viewer::displayFrameCV(Frame &frame) {
 				for (int i = 1; i < lastAnticlockwiseAngles.size(); ++i)
 					delta += getAngleBetween(lastAnticlockwiseAngles[i - 1], lastAnticlockwiseAngles[i]);
 				delta = abs(delta);
-				if (lastAnticlockwiseAngles.size() >= 6 && delta >= 15) {
+				if (lastAnticlockwiseAngles.size() >= 6 && delta >= (spinFlag ? 15 : 30)) {
 					cout << "anticlockwise!" << endl;
-					Viewer::m_inject.touch_down(1100, 1000);
+					if (!spinFlag) m_inject.touch_up();
+					m_inject.touch_down(1100, 1000);
 					Sleep(5);
-					Viewer::m_inject.touch_move(800, 1000);
+					m_inject.touch_move(800, 1000);
 					Sleep(5);
-					Viewer::m_inject.touch_move(500, 1000);
+					m_inject.touch_move(500, 1000);
 					Sleep(5);
-					Viewer::m_inject.touch_up();
+					m_inject.touch_up();
 					lastAnticlockwiseAngles.clear();
+					spinFlag = true;
 				}
 			}
 			else {
@@ -805,15 +824,24 @@ void Viewer::displayFrameCV(Frame &frame) {
 			lastClockwiseAngles.clear();
 			lastAnticlockwiseAngles.clear();
 		}
-		if (!last_dirty) touchSum = sum;
-		last_dirty = isDirty;
-		deltasum = sum - lastsum;
-		lastsum = sum;
-		return;
+
+		if (spinFlag)
+		{
+			if (!last_dirty)
+			{
+				spinFlag = false;
+				touchSum = sum;
+			}
+			last_dirty = isDirty;
+			deltasum = sum - lastsum;
+			lastsum = sum;
+			return;
+		}
 		//here we stop
 
 		if (!last_dirty)                                         //触摸开始
 		{
+			wrongFrameFlag = true;
 			touchSum = sum;
 			frame_count = 0;
 			has_find_pattern = findPattern(binaryImage, patternRect, firstTouch);
@@ -990,7 +1018,19 @@ void Viewer::displayFrameCV(Frame &frame) {
 	}
 	else                                               //触摸结束
 	{
-		sendPoint(true);
+		if (spinFlag)
+		{
+			points_buffer.clear();
+			ropoints_buffer.clear();
+			realpoints_buffer.clear();
+			dirtylow = 50000;
+		}
+		else
+		{
+			if (last_dirty)
+				sendPoint(true);
+		}
+
 		if (last_dirty) {
 			//m_inject.touch_up();
 			//sent(0, 0, "up");

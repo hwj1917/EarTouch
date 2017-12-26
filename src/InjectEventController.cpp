@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <WinDef.h>
 #include <atlstr.h>
+#include <iostream>
 using namespace std;
 
 InjectEventController::InjectEventController()
@@ -11,6 +12,7 @@ InjectEventController::InjectEventController()
 
 void InjectEventController::touch_down(int x, int y, int pressure)
 {
+	cout << "down\n";
 	WinExec((ADB + "0 " + DEVICE + to_string(x) + " " + to_string(y)).c_str(), SW_NORMAL);
 }
 
