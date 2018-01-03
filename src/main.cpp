@@ -1,6 +1,5 @@
 #include "picker.h"
 #include "viewer.h"
-//#include <thread>
 #include <windows.h>
 #include <process.h>
 #include <fstream>
@@ -30,21 +29,30 @@ void viewer_udpinit() {
 	Viewer::initUDP();
 }
 
+void* runTCP(void* nouse)
+{
+	Picker::getSensorData();
+	return NULL;
+}
+
 int main(int argc, char **argv) {
 	//UDP
 	//viewer_udpinit();
-	//Picke
-
 
 	_argc = argc, _argv = argv;
-	pthread_t threads[2];
+
+	pthread_t threads[3];
 	pthread_mutex_init(&Picker::frames_mutex, NULL);
+	pthread_mutex_init(&Picker::tcp_mutex, NULL);
 	pthread_create(&threads[0], NULL, picker_getlog, NULL);
 	pthread_create(&threads[1], NULL, run, NULL);
+	pthread_create(&threads[2], NULL, runTCP, NULL);
 
 	pthread_join(threads[0], NULL);
 	pthread_join(threads[1], NULL);
+	pthread_join(threads[2], NULL);
 	pthread_mutex_destroy(&Picker::frames_mutex);
+	pthread_mutex_destroy(&Picker::tcp_mutex);
     return 0;
 
 }
@@ -88,7 +96,7 @@ int main() {
 
 	//ear.txt 1730
 	//
-	loadFile("D:\\Projects\\EarTouch\\HWViewer\\HWViewer\\tap\\data_2.txt");
+	loadFile("D:\\Projects\\EarTouch\\HWViewer\\HWViewer\\data\\data_face.txt");
 	index = 0;
 	/*Mat Image(560, 320,CV_8UC1);
 	imshow("tracking", Image);
@@ -112,7 +120,7 @@ int main() {
 			lanc.convertTo(tmp, CV_8U);
 			threshold(tmp, binaryImage, 200, 0, THRESH_TOZERO);
 			imshow("tracking2", binaryImage);*/
-			cout << "*" << index << endl;
+			//cout << "*" << index << endl;
 			
 			Viewer::displayFrameCV(file_buffer.at(index));
 			index = index + 1;

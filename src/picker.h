@@ -3,6 +3,7 @@
 
 #include "frame.h"
 #include <pthread.h>
+#include <queue>
 
 class Lock {
 public:
@@ -22,14 +23,17 @@ public:
 
 class Picker {
 public:
-    static pthread_mutex_t frames_mutex;
+    static pthread_mutex_t frames_mutex, tcp_mutex;
     static deque<Frame> frames;
+	static queue<double> angles;
+	static queue<float> accerations;
     static vector<long long> delays;
     
     static Frame frame_down;
     static Frame frame_stable;
     
     static void getLog();
+	static void getSensorData();
 };
 
 #endif /* picker_h */

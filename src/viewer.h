@@ -52,7 +52,7 @@ public:
 
     static void run(int argc, char **argv);
 
-	static void displayFrameCV(Frame &frame);
+	static void displayFrameCV(Frame &frame, double angle, float acce);
 
 	static void initUDP();
 
@@ -100,6 +100,7 @@ private:
 
 	static bool judgeDirty(int);
 	static void sendPoint(bool, Point);
+	static void checkSpin(int, Mat&);
 };
 
 #endif /* viewer_h */
