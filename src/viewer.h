@@ -100,7 +100,7 @@ private:
 
 	static bool judgeDirty(int);
 	static void sendPoint(bool, Point);
-	static void checkSpin(int, Mat&);
+	static void checkSpin(int, Mat&, double);
 };
 
 #endif /* viewer_h */

@@ -12,6 +12,7 @@ InjectEventController::InjectEventController()
 
 void InjectEventController::touch_down(int x, int y, int pressure)
 {
+	//cout << "down\n";
 	WinExec((ADB + "0 " + DEVICE + to_string(x) + " " + to_string(y)).c_str(), SW_NORMAL);
 }
 
@@ -22,6 +23,7 @@ void InjectEventController::touch_move(int x, int y, int pressure)
 
 void InjectEventController::touch_up()
 {
+	//cout << "up\n";
 	WinExec((ADB + "2 " + DEVICE).c_str(), SW_NORMAL);
 }
 

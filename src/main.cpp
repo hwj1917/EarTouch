@@ -39,6 +39,14 @@ int main(int argc, char **argv) {
 	//UDP
 	//viewer_udpinit();
 
+	Viewer::m_inject.touch_down(1100, 1000);
+	Sleep(50);
+	Viewer::m_inject.touch_move(800, 1000);
+	Sleep(50);
+	Viewer::m_inject.touch_move(100, 1000);
+	Sleep(50);
+	Viewer::m_inject.touch_up();
+
 	_argc = argc, _argv = argv;
 
 	pthread_t threads[3];

@@ -267,7 +267,7 @@ void Picker::getSensorData()
 	//°ó¶¨IPºÍ¶Ë¿Ú
 	sockaddr_in sin;
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(8080);
+	sin.sin_port = htons(8086);
 	sin.sin_addr.S_un.S_addr = INADDR_ANY;
 	::bind(slisten, (LPSOCKADDR)&sin, sizeof(sin));
 
@@ -309,7 +309,7 @@ void Picker::getSensorData()
 				string val = str.substr(0, pos);
 				
 				double res = atof(val.substr(1).c_str());
-				pthread_mutex_lock(&Picker::tcp_mutex);
+				//pthread_mutex_lock(&Picker::tcp_mutex);
 				if (val[0] == 'r')
 				{
 					angles.push(res);
@@ -324,7 +324,7 @@ void Picker::getSensorData()
 						accerations.pop();
 					}
 				}
-				pthread_mutex_unlock(&Picker::tcp_mutex);
+				//pthread_mutex_unlock(&Picker::tcp_mutex);
 
 				str = str.substr(pos + 1);
 			}

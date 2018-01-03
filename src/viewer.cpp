@@ -655,7 +655,7 @@ bool spinFlag = false, wrongFrameFlag = true;
 
 bool isClockwise(double last, double now) {
 	bool ans = now > last;
-	if (abs(last - now) > 45) {
+	if (abs(last - now) > 180) {
 		ans = !ans;
 	}
 	return ans;
@@ -663,59 +663,37 @@ bool isClockwise(double last, double now) {
 
 double getAngleBetween(double last, double now) {
 	bool flag = now > last;
-	if (abs(last - now) > 45) {
+	if (abs(last - now) > 180) {
 		flag = !flag;
 	}
 	double ans = now - last;
-	if (abs(last - now) > 45) {
+	if (abs(last - now) > 180) {
 		if (flag) {
-			ans += 90;
+			ans += 360;
 		}
 		else {
-			ans -= 90;
+			ans -= 360;
 		}
 	}
 	return ans;
 }
 
-void Viewer::checkSpin(int sum, Mat& binaryImage)
+void Viewer::checkSpin(int sum, Mat& binaryImage, double angle)
 {
+	//cout << "angle = " << angle << endl;
+	angle = angle / PI * 180;
 	if (sum < touchSum + PRESS_THRESHOLD)
 	{
-		vector<vector<Point>> contours;
-		vector<Vec4i> hierarchy;
-		findContours(binaryImage, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-		Rect rectsum;
-		vector<Point> save;
-		for (int i = 0; i < contours.size(); i++) {
-			//cout << "***   " << i << contours[i].size() << endl << endl;
-			if (contours[i].size() > 20 && contours[i].size()) {
-				Rect recti = boundingRect(contours.at(i));
-				rectsum = rectsum | recti;
-				save.insert(save.end(), contours.at(i).begin(), contours.at(i).end());
-			}
-		}
-		RotatedRect firstTouch = minAreaRect(save);
-		Point2f vertices[4];
-		firstTouch.points(vertices);
-		Mat show3 = binaryImage.clone();
-		for (int i = 0; i < 4; i++) {
-			line(show3, vertices[i], vertices[(i + 1) % 4], 255, 1);
-		}
-		//imshow("now", show3);
-		//cout << "angle = " << firstTouch.angle << endl;
-		//waitKey(5);
-
 		if (lastClockwiseAngles.size() == 0) {
-			lastClockwiseAngles.push_back(firstTouch.angle);
+			lastClockwiseAngles.push_back(angle);
 		}
-		else if (isClockwise(lastClockwiseAngles[lastClockwiseAngles.size() - 1], firstTouch.angle)) {
-			lastClockwiseAngles.push_back(firstTouch.angle);
+		else if (abs(lastClockwiseAngles[lastClockwiseAngles.size() - 1] - angle) < 1 || isClockwise(lastClockwiseAngles[lastClockwiseAngles.size() - 1], angle)) {
+			lastClockwiseAngles.push_back(angle);
 			double delta = 0;
 			for (int i = 1; i < lastClockwiseAngles.size(); ++i)
 				delta += getAngleBetween(lastClockwiseAngles[i - 1], lastClockwiseAngles[i]);
 			delta = abs(delta);
-			if (lastClockwiseAngles.size() >= 6 && delta >= (spinFlag ? 15 : 30)) {
+			if (lastClockwiseAngles.size() >= 6 && delta >= (spinFlag ? 20 : 30)) {
 				cout << "clockwise!" << endl;
 				if (!spinFlag) m_inject.touch_up();
 				m_inject.touch_down(500, 1000);
@@ -734,15 +712,15 @@ void Viewer::checkSpin(int sum, Mat& binaryImage)
 		}
 
 		if (lastAnticlockwiseAngles.size() == 0) {
-			lastAnticlockwiseAngles.push_back(firstTouch.angle);
+			lastAnticlockwiseAngles.push_back(angle);
 		}
-		else if (!isClockwise(lastAnticlockwiseAngles[lastAnticlockwiseAngles.size() - 1], firstTouch.angle)) {
-			lastAnticlockwiseAngles.push_back(firstTouch.angle);
+		else if (abs(lastAnticlockwiseAngles[lastAnticlockwiseAngles.size() - 1] - angle) < 1 || !isClockwise(lastAnticlockwiseAngles[lastAnticlockwiseAngles.size() - 1], angle)) {
+			lastAnticlockwiseAngles.push_back(angle);
 			double delta = 0;
 			for (int i = 1; i < lastAnticlockwiseAngles.size(); ++i)
 				delta += getAngleBetween(lastAnticlockwiseAngles[i - 1], lastAnticlockwiseAngles[i]);
 			delta = abs(delta);
-			if (lastAnticlockwiseAngles.size() >= 6 && delta >= (spinFlag ? 15 : 30)) {
+			if (lastAnticlockwiseAngles.size() >= 6 && delta >= (spinFlag ? 20 : 30)) {
 				cout << "anticlockwise!" << endl;
 				if (!spinFlag) m_inject.touch_up();
 				m_inject.touch_down(1100, 1000);
@@ -768,7 +746,8 @@ void Viewer::checkSpin(int sum, Mat& binaryImage)
 }
 
 void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
-	cout << angle << ' ' << acce << endl;
+	//cout << angle << ' ' << acce << endl;
+
 	bool has_find_pattern;
 	Rect patternRect;
 	RotatedRect firstTouch;
@@ -792,8 +771,8 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 		m_inject.touch_double_click(0, 0); 
 
 		sendPoint(true);
-		spinFlag = false;
-		last_dirty = false;
+		//spinFlag = false;
+		//last_dirty = false;
 		deltasum = sum - lastsum;
 		lastsum = sum;
 		return;
@@ -810,6 +789,7 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 	}
 
 	bool isDirty = judgeDirty(sum);                    //判断该帧是否足够可靠，以确定耳朵是否抬起
+	cout << isDirty << endl;
 
 	if (isDirty)
 	{
@@ -825,13 +805,13 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 
 		Point result;
 		resize(input, lanc, Size(), 20.0, 20.0, INTER_LANCZOS4);
-		threshold(lanc, binaryImage, 800, 0, THRESH_TOZERO);        //gray
+		threshold(lanc, binaryImage, 200, 0, THRESH_TOZERO);        //gray
 		binaryImage.convertTo(binaryImage, CV_8U);
 		//imshow("image", binaryImage);
 		//waitKey(5);
 
 		//here we go
-		checkSpin(sum, binaryImage);
+		checkSpin(sum, binaryImage, angle);
 
 		if (spinFlag)
 		{
@@ -922,7 +902,7 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 				{
 					if (box.x >= 0 && box.y >= 0 && box.x + box.width <= binaryImage.cols && box.y + box.height <= binaryImage.rows)
 					{
-						cout << "refresh\n";
+						//cout << "refresh\n";
 						Rect rect;
 						findPattern(binaryImage, rect, RotatedRect());
 						trackerInit(tracker[tracker_now], binaryImage, rect);
@@ -964,7 +944,7 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 			}
 			else
 			{
-				cout << "failed\n";
+				//cout << "failed\n";
 				//判断卷起的情况
 
 				Rect rect;
@@ -979,7 +959,7 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 				frame_count = 0;
 				if (succ_last)
 				{
-					cout << "switch\n";
+					//cout << "switch\n";
 					trackerInit(tracker[tracker_now], binaryImage, rect);
 					last_box_point = last_point[tracker_last];
 					box_point = Point(box_last.x, box_last.y);
@@ -992,7 +972,7 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 				}
 				else
 				{
-					cout << "double\n";
+					//cout << "double\n";
 					trackerInit(tracker[tracker_last], binaryImage, rect);
 					trackerInit(tracker[tracker_now], binaryImage, rect);
 					pattern = binaryImage(rect);
@@ -1304,7 +1284,7 @@ void Viewer::keyboard(unsigned char key, int x, int y) {
 }
 
 void Viewer::run(int argc, char **argv) {
-	//pthread_create(&draw_thread, NULL, draw, NULL);
+	pthread_create(&draw_thread, NULL, draw, NULL);
 	int lastID = -1;
 	while (true)
 	{
@@ -1325,7 +1305,7 @@ void Viewer::run(int argc, char **argv) {
 		if (frame_current) {
 			//cout << "*" << frame_current->frameID << endl;
 			//cout << (float)clock() / CLOCKS_PER_SEC << endl;
-			pthread_mutex_lock(&Picker::tcp_mutex);
+			//pthread_mutex_lock(&Picker::tcp_mutex);
 			
 			double angle = 0;
 			float acce = 0;
@@ -1333,13 +1313,13 @@ void Viewer::run(int argc, char **argv) {
 				angle = Picker::angles.back();
 			if (!Picker::accerations.empty())
 				acce = Picker::accerations.back();
-			pthread_mutex_unlock(&Picker::tcp_mutex);
+			//pthread_mutex_unlock(&Picker::tcp_mutex);
 			displayFrameCV(*frame_current, angle, acce);
 			//cout << (float)clock() / CLOCKS_PER_SEC << endl<< endl;
 		}
 		lastID = frame_current->frameID;
 	}
-	//pthread_join(draw_thread, NULL);
+	pthread_join(draw_thread, NULL);
 
 	/*
 	glutInit(&argc, argv);
