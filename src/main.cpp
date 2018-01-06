@@ -29,38 +29,32 @@ void viewer_udpinit() {
 	Viewer::initUDP();
 }
 
-void* runTCP(void* nouse)
+void* runTCPrecv(void* nouse)
 {
-	Picker::getSensorData();
+	Viewer::recvTCP();
 	return NULL;
 }
 
 int main(int argc, char **argv) {
 	//UDP
 	//viewer_udpinit();
-
-	Viewer::m_inject.touch_down(1100, 1000);
-	Sleep(50);
-	Viewer::m_inject.touch_move(800, 1000);
-	Sleep(50);
-	Viewer::m_inject.touch_move(100, 1000);
-	Sleep(50);
-	Viewer::m_inject.touch_up();
-
+	
+	Viewer::initTCP();
+	cout << "input \"start\" to start" << endl;
+	string start;
+	cin >> start;
 	_argc = argc, _argv = argv;
 
 	pthread_t threads[3];
 	pthread_mutex_init(&Picker::frames_mutex, NULL);
-	pthread_mutex_init(&Picker::tcp_mutex, NULL);
 	pthread_create(&threads[0], NULL, picker_getlog, NULL);
 	pthread_create(&threads[1], NULL, run, NULL);
-	pthread_create(&threads[2], NULL, runTCP, NULL);
+	pthread_create(&threads[2], NULL, runTCPrecv, NULL);
 
 	pthread_join(threads[0], NULL);
 	pthread_join(threads[1], NULL);
 	pthread_join(threads[2], NULL);
 	pthread_mutex_destroy(&Picker::frames_mutex);
-	pthread_mutex_destroy(&Picker::tcp_mutex);
     return 0;
 
 }

@@ -6,10 +6,7 @@
 #define ADB_LOGCAT_LOG "adb logcat -s aptouch_daemon"
 
 pthread_mutex_t Picker::frames_mutex;
-pthread_mutex_t Picker::tcp_mutex;
 deque<Frame> Picker::frames;
-queue<double> Picker::angles;
-queue<float> Picker::accerations;
 vector<long long> Picker::delays;
 
 Frame Picker::frame_down;
@@ -245,89 +242,3 @@ void Picker::getLog() {
     _pclose(pf);
 }
 
-void Picker::getSensorData()
-{
-	//初始化WSA
-	WORD sockVersion = MAKEWORD(2, 2);
-	WSADATA wsaData;
-	if (WSAStartup(sockVersion, &wsaData) != 0)
-	{
-		printf("start failed!\n");
-		return;
-	}
-	
-	//创建套接字
-	SOCKET slisten = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (slisten == INVALID_SOCKET)
-	{
-		printf("socket error !\n");
-		return;
-	}
-	
-	//绑定IP和端口
-	sockaddr_in sin;
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(8086);
-	sin.sin_addr.S_un.S_addr = INADDR_ANY;
-	::bind(slisten, (LPSOCKADDR)&sin, sizeof(sin));
-
-	//开始监听
-	if (listen(slisten, 5) == SOCKET_ERROR)
-	{
-		printf("listen error !\n");
-		return;
-	}
-	
-	SOCKET sClient;
-	sockaddr_in remoteAddr;
-	int nAddrlen = sizeof(remoteAddr);
-	char recvData[255];
-
-	sClient = accept(slisten, (SOCKADDR *)&remoteAddr, &nAddrlen);
-	if (sClient == INVALID_SOCKET)
-	{
-		printf("accept error !\n");
-		return;
-	}
-	printf("接受到一个连接\n");
-		
-	//接收数据
-	string str;
-	while (true)
-	{
-		int ret = recv(sClient, recvData, 255, 0);
-		if (ret > 0)
-		{
-			for (int i = 0; i < ret; i++)
-				str.push_back(recvData[i]);
-			
-			while (true)
-			{
-				int pos = str.find("\n");
-				if (pos == -1)
-					break;
-				string val = str.substr(0, pos);
-				
-				double res = atof(val.substr(1).c_str());
-				//pthread_mutex_lock(&Picker::tcp_mutex);
-				if (val[0] == 'r')
-				{
-					angles.push(res);
-					if (angles.size() > MAX_TCP_BUFFER_SIZE) {
-						angles.pop();
-					}
-				}
-				if (val[0] == 'a')
-				{
-					accerations.push(res);
-					if (accerations.size() > MAX_TCP_BUFFER_SIZE) {
-						accerations.pop();
-					}
-				}
-				//pthread_mutex_unlock(&Picker::tcp_mutex);
-
-				str = str.substr(pos + 1);
-			}
-		}
-	}
-}

@@ -86,9 +86,6 @@ Ptr<TrackerKCF> Viewer::tracker[2];
 
 Point firstPoint = Point(0.0, 0.0);
 
-//timeval last_frame_time;
-//timeval current_frame_time;
-
 #define KCF_REFRESH_INTERVAL 25
 pthread_t draw_thread, update_threads[2];
 const int MIN_X = 130, MAX_X = 750, MIN_Y = 200, MAX_Y = 1315, FINGER_Y = 305;
@@ -98,6 +95,9 @@ Rect2d box, box_last;
 bool succ, succ_last;
 
 bool isFlick = false;
+
+SOCKET Viewer::tcpClient;
+queue<bool> clockwise;
 
 void* Viewer::draw(void* nouse)
 {
@@ -168,6 +168,84 @@ void Viewer::sent(int x, int y,string type) {
 	}
 	//closesocket(sSocket);
 	//WSACleanup();
+}
+
+void Viewer::initTCP()
+{
+	//初始化WSA
+	WORD sockVersion = MAKEWORD(2, 2);
+	WSADATA wsaData;
+	if (WSAStartup(sockVersion, &wsaData) != 0)
+	{
+		printf("start failed!\n");
+		return;
+	}
+
+	//创建套接字
+	SOCKET slisten = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (slisten == INVALID_SOCKET)
+	{
+		printf("socket error !\n");
+		return;
+	}
+
+	//绑定IP和端口
+	sockaddr_in sin;
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(8086);
+	sin.sin_addr.S_un.S_addr = INADDR_ANY;
+	::bind(slisten, (LPSOCKADDR)&sin, sizeof(sin));
+
+	//开始监听
+	if (listen(slisten, 5) == SOCKET_ERROR)
+	{
+		printf("listen error !\n");
+		return;
+	}
+
+	sockaddr_in remoteAddr;
+	int nAddrlen = sizeof(remoteAddr);
+
+	tcpClient = accept(slisten, (SOCKADDR *)&remoteAddr, &nAddrlen);
+	if (tcpClient == INVALID_SOCKET)
+	{
+		printf("accept error !\n");
+		return;
+	}
+	printf("接受到一个连接\n");
+}
+
+void Viewer::recvTCP()
+{
+	char recvData[255];
+	while (true)
+	{
+		int ret = recv(tcpClient, recvData, 255, 0);
+		if (ret > 0)
+		{
+			for (int i = 0; i < ret; i++)
+			{
+				if (recvData[i] == 'c')
+				{
+					clockwise.push(true);
+				}
+				else if (recvData[i] == 'a')
+				{
+					clockwise.push(false);
+				}
+			}
+		}
+	}
+}
+
+void Viewer::sendTCP(bool down)
+{
+	char msg[3];
+	msg[1] = '\n';
+	if (down)
+		msg[0] = 'd';
+	else msg[0] = 'u';
+	send(tcpClient, msg, 2, 0);
 }
 
 void rotateAxis(Point first, Point now, float theta, Point& rotated) {
@@ -745,8 +823,7 @@ void Viewer::checkSpin(int sum, Mat& binaryImage, double angle)
 	}
 }
 
-void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
-	//cout << angle << ' ' << acce << endl;
+void Viewer::displayFrameCV(Frame &frame) {
 
 	bool has_find_pattern;
 	Rect patternRect;
@@ -789,7 +866,7 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 	}
 
 	bool isDirty = judgeDirty(sum);                    //判断该帧是否足够可靠，以确定耳朵是否抬起
-	cout << isDirty << endl;
+	//cout << isDirty << endl;
 
 	if (isDirty)
 	{
@@ -811,7 +888,36 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 		//waitKey(5);
 
 		//here we go
-		checkSpin(sum, binaryImage, angle);
+		for (int i = 0; i < clockwise.size(); i++)
+		{
+			bool cw = clockwise.front();
+			clockwise.pop();
+			if (cw)
+			{
+				if (!spinFlag) m_inject.touch_up();
+				m_inject.touch_down(500, 1000);
+				Sleep(5);
+				m_inject.touch_move(800, 1000);
+				Sleep(5);
+				m_inject.touch_move(1100, 1000);
+				Sleep(5);
+				m_inject.touch_up();
+				spinFlag = true;
+			}
+			else
+			{
+				if (!spinFlag) m_inject.touch_up();
+				m_inject.touch_down(1100, 1000);
+				Sleep(5);
+				m_inject.touch_move(800, 1000);
+				Sleep(5);
+				m_inject.touch_move(500, 1000);
+				Sleep(5);
+				m_inject.touch_up();
+				spinFlag = true;
+			}
+		}
+		//checkSpin(sum, binaryImage, angle);
 
 		if (spinFlag)
 		{
@@ -829,10 +935,12 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 
 		if (!last_dirty)                                         //触摸开始
 		{
+			sendTCP(true);
 			wrongFrameFlag = true;
 			touchSum = sum;
 			frame_count = 0;
 			has_find_pattern = findPattern(binaryImage, patternRect, firstTouch);
+			/*
 			////////////////////////////////////for show the rectangle///////////////////////////////
 			Point2f vertices[4];
 			firstTouch.points(vertices);
@@ -843,6 +951,7 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 			imshow("tmp", show3);
 			waitKey(5);
 			///////////////////////////////////////////////////////////////////////////
+			*/
 			if (has_find_pattern)
 			{
 				Point want;
@@ -1012,11 +1121,16 @@ void Viewer::displayFrameCV(Frame &frame, double angle, float acce) {
 			ropoints_buffer.clear();
 			realpoints_buffer.clear();
 			dirtylow = 50000;
+			spinFlag = false;
+			sendTCP(false);
 		}
 		else
 		{
 			if (last_dirty)
+			{
 				sendPoint(true);
+				sendTCP(false);
+			}
 		}
 
 		if (last_dirty) {
@@ -1305,16 +1419,7 @@ void Viewer::run(int argc, char **argv) {
 		if (frame_current) {
 			//cout << "*" << frame_current->frameID << endl;
 			//cout << (float)clock() / CLOCKS_PER_SEC << endl;
-			//pthread_mutex_lock(&Picker::tcp_mutex);
-			
-			double angle = 0;
-			float acce = 0;
-			if (!Picker::angles.empty())
-				angle = Picker::angles.back();
-			if (!Picker::accerations.empty())
-				acce = Picker::accerations.back();
-			//pthread_mutex_unlock(&Picker::tcp_mutex);
-			displayFrameCV(*frame_current, angle, acce);
+			displayFrameCV(*frame_current);
 			//cout << (float)clock() / CLOCKS_PER_SEC << endl<< endl;
 		}
 		lastID = frame_current->frameID;

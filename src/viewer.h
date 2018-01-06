@@ -52,7 +52,7 @@ public:
 
     static void run(int argc, char **argv);
 
-	static void displayFrameCV(Frame &frame, double angle, float acce);
+	static void displayFrameCV(Frame &frame);
 
 	static void initUDP();
 
@@ -61,7 +61,13 @@ public:
 	static void* draw(void* nouse);
 
 	static InjectEventController m_inject;
+
+	static SOCKET tcpClient;
+	static void initTCP();
+	static void recvTCP();
+	static void sendTCP(bool);
 private:
+
     static char viewer_type;
     static char frame_type;
     static int frame_index;
