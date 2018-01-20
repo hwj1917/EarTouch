@@ -852,6 +852,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 		//last_dirty = false;
 		deltasum = sum - lastsum;
 		lastsum = sum;
+		Sleep(500);
 		return;
 	}
 	//////////////////////////////////////////////////////////////////////////////////////////////
@@ -919,18 +920,19 @@ void Viewer::displayFrameCV(Frame &frame) {
 		}
 		//checkSpin(sum, binaryImage, angle);
 
-		if (spinFlag)
-		{
+		//if (spinFlag)
+		//{
 			if (!last_dirty)
 			{
 				spinFlag = false;
 				touchSum = sum;
+				sendTCP(true);
 			}
 			last_dirty = isDirty;
 			deltasum = sum - lastsum;
 			lastsum = sum;
 			return;
-		}
+		//}
 		//here we stop
 
 		if (!last_dirty)                                         //触摸开始
