@@ -720,8 +720,8 @@ void Viewer::displayFrameCV(Frame &frame) {
 		resize(input, lanc, Size(), 20.0, 20.0, INTER_LANCZOS4);
 		threshold(lanc, binaryImage, 200, 0, THRESH_TOZERO);        //gray
 		binaryImage.convertTo(binaryImage, CV_8U);
-		imshow("image", binaryImage);
-		waitKey(5);
+		//imshow("image", binaryImage);
+		//waitKey(5);
 
 		//here we go
 		if (sum < touchSum + PRESS_THRESHOLD)
@@ -742,6 +742,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 			firstTouch = minAreaRect(save);
 			Point2f vertices[4];
 			firstTouch.points(vertices);
+			
 			Mat show3 = binaryImage.clone();
 			for (int i = 0; i < 4; i++) {
 				line(show3, vertices[i], vertices[(i + 1) % 4], 255, 1);
@@ -749,7 +750,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 			imshow("now", show3);
 			cout << "angle = " << firstTouch.angle << endl;
 			waitKey(5);
-
+			
 			if (lastClockwiseAngles.size() == 0) {
 				lastClockwiseAngles.push_back(firstTouch.angle);
 			}
