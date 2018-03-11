@@ -17,7 +17,6 @@
 #include <numeric>
 #include <stdio.h>
 #include <time.h>
-#include <windows.h>
 #include <cv.h>
 #include <highgui.h>
 #include <cv.hpp>
@@ -25,7 +24,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/tracking/tracker.hpp>
-#include <winsock.h>
 
 using namespace cv;
 using namespace std;
@@ -62,10 +60,7 @@ public:
 
 	static InjectEventController m_inject;
 
-	static SOCKET tcpClient;
-	static void initTCP();
-	static void recvTCP();
-	static void sendTCP(bool);
+
 private:
 
     static char viewer_type;

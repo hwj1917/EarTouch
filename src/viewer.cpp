@@ -6,7 +6,6 @@
 #include <ctime>
 #include <iostream>
 
-#include <winsock.h>
 #include <string.h>
 
 #pragma comment(lib,"WS2_32.lib")  
@@ -74,12 +73,16 @@ int Viewer::stablesum = 1000;
 int Viewer::leavesum = 0;
 int Viewer::dirtylow = 50000;
 
+const int lenx = GRID_RES_X * 20, leny = GRID_RES_Y * 20;
+const float screenx = 1440, screeny = 2560;
+const float mulx = screenx / lenx, muly = screeny / leny;
+
 vector<double> lastClockwiseAngles = vector<double>();
 vector<double> lastAnticlockwiseAngles = vector<double>();
 
-Mat Viewer::pattern, Viewer::lanc(560, 320, CV_32F), Viewer::Image[2];
+Mat Viewer::pattern, Viewer::lanc(leny, lenx, CV_32F), Viewer::Image[2];
 
-Point Viewer::last_result(160, 180), Viewer::last_point[2], Viewer::start_point, Viewer::end_point;
+Point Viewer::last_result(lenx / 2, leny / 2), Viewer::last_point[2], Viewer::start_point, Viewer::end_point;
 int Viewer::pattern_sum;
 Ptr<TrackerKCF> Viewer::tracker[2];
 
@@ -88,7 +91,7 @@ Point firstPoint = Point(0.0, 0.0);
 
 #define KCF_REFRESH_INTERVAL 25
 pthread_t draw_thread, update_threads[2];
-const int MIN_X = 130, MAX_X = 750, MIN_Y = 200, MAX_Y = 1315, FINGER_Y = 305;
+const int MIN_X = 175, MAX_X = 1000, MIN_Y = 270, MAX_Y = 1755;
 int last = 0, now = 1, frame_count = 0;
 int tracker_last = 1, tracker_now = 0;
 Rect2d box, box_last;
@@ -96,29 +99,22 @@ bool succ, succ_last;
 
 bool isFlick = false;
 
-SOCKET Viewer::tcpClient;
 queue<bool> clockwise;
 
 void* Viewer::draw(void* nouse)
 {
 	while (true)
 	{
-		Mat drawing = Mat::zeros(Size(360, 640), CV_8UC3);
+		Mat drawing = Mat::zeros(Size(lenx, leny), CV_8UC3);
 		for (int i = 0; i < Viewer::points_buffer.size(); i++)
 			circle(drawing, Viewer::points_buffer[i] / 3, 0.5, Scalar(255, 0, 255), -1);
 		imshow("result", drawing);
 
-		Mat real = Mat::zeros(Size(360, 640), CV_8UC3);
+		Mat real = Mat::zeros(Size(lenx, leny), CV_8UC3);
 		for (int i = 0; i < Viewer::realpoints_buffer.size(); i++)
 			circle(real, Viewer::realpoints_buffer[i] / 3, 0.5, Scalar(0, 0, 255), -1);
 		imshow("real", real);
 		waitKey(5);
-
-		//Mat sum = Mat::zeros(Size(1500, 800), CV_8UC3);
-		//for (int i = 1; i < Viewer::sums_buffer.size(); i++)
-		//	circle(sum, Point(Viewer::sums_buffer[i].x % 1500,800- Viewer::sums_buffer[i].y / 100), 1, Scalar(255, 255, 0), -1);
-		//imshow("sum", sum);
-		//waitKey(30);
 	}
 }
 
@@ -168,84 +164,6 @@ void Viewer::sent(int x, int y,string type) {
 	}
 	//closesocket(sSocket);
 	//WSACleanup();
-}
-
-void Viewer::initTCP()
-{
-	//初始化WSA
-	WORD sockVersion = MAKEWORD(2, 2);
-	WSADATA wsaData;
-	if (WSAStartup(sockVersion, &wsaData) != 0)
-	{
-		printf("start failed!\n");
-		return;
-	}
-
-	//创建套接字
-	SOCKET slisten = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (slisten == INVALID_SOCKET)
-	{
-		printf("socket error !\n");
-		return;
-	}
-
-	//绑定IP和端口
-	sockaddr_in sin;
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(8086);
-	sin.sin_addr.S_un.S_addr = INADDR_ANY;
-	::bind(slisten, (LPSOCKADDR)&sin, sizeof(sin));
-
-	//开始监听
-	if (listen(slisten, 5) == SOCKET_ERROR)
-	{
-		printf("listen error !\n");
-		return;
-	}
-
-	sockaddr_in remoteAddr;
-	int nAddrlen = sizeof(remoteAddr);
-
-	tcpClient = accept(slisten, (SOCKADDR *)&remoteAddr, &nAddrlen);
-	if (tcpClient == INVALID_SOCKET)
-	{
-		printf("accept error !\n");
-		return;
-	}
-	printf("接受到一个连接\n");
-}
-
-void Viewer::recvTCP()
-{
-	char recvData[255];
-	while (true)
-	{
-		int ret = recv(tcpClient, recvData, 255, 0);
-		if (ret > 0)
-		{
-			for (int i = 0; i < ret; i++)
-			{
-				if (recvData[i] == 'c')
-				{
-					clockwise.push(true);
-				}
-				else if (recvData[i] == 'a')
-				{
-					clockwise.push(false);
-				}
-			}
-		}
-	}
-}
-
-void Viewer::sendTCP(bool down)
-{
-	char msg[3];
-	msg[1] = '\n';
-	if (down)
-		msg[0] = 'd';
-	else msg[0] = 'u';
-	send(tcpClient, msg, 2, 0);
 }
 
 void rotateAxis(Point first, Point now, float theta, Point& rotated) {
@@ -676,8 +594,8 @@ void Viewer::sendPoint(bool touchEnd, Point result = Point())
 		if (N > 0 && N < 5)
 		{
 			Point p = points_buffer[0];
-			p.x = (float)(p.x - MIN_X) / (MAX_X - MIN_X) * 1080;
-			p.y = (float)(p.y - MIN_Y) / (MAX_Y - MIN_Y) * 1920;
+			p.x = (float)(p.x - MIN_X) / (MAX_X - MIN_X) * screenx;
+			p.y = (float)(p.y - MIN_Y) / (MAX_Y - MIN_Y) * screeny;
 			m_inject.touch_down(p.x, p.y);
 			//sent(p.x, p.y, "down");
 			realpoints_buffer.push_back(p);
@@ -703,20 +621,20 @@ void Viewer::sendPoint(bool touchEnd, Point result = Point())
 			if (N == 5)
 			{
 				Point p = points_buffer[0];
-				p.x = (float)(p.x - MIN_X) / (MAX_X - MIN_X) * 1080;
-				p.y = (float)(p.y - MIN_Y) / (MAX_Y - MIN_Y) * 1920;
+				p.x = (float)(p.x - MIN_X) / (MAX_X - MIN_X) * screenx;
+				p.y = (float)(p.y - MIN_Y) / (MAX_Y - MIN_Y) * screeny;
 				m_inject.touch_down(p.x, p.y);
 				//sent(p.x, p.y, "down");
 				realpoints_buffer.push_back(p);
 				p = points_buffer[1];
-				p.x = (float)(p.x - MIN_X) / (MAX_X - MIN_X) * 1080;
-				p.y = (float)(p.y - MIN_Y) / (MAX_Y - MIN_Y) * 1920;
+				p.x = (float)(p.x - MIN_X) / (MAX_X - MIN_X) * screenx;
+				p.y = (float)(p.y - MIN_Y) / (MAX_Y - MIN_Y) * screeny;
 				m_inject.touch_move(p.x, p.y);
 				//sent(p.x, p.y, "move");
 			}
 			Point p = points_buffer[N - 3];
-			p.x = (float)(p.x - MIN_X) / (MAX_X - MIN_X) * 1080;
-			p.y = (float)(p.y - MIN_Y) / (MAX_Y - MIN_Y) * 1920;
+			p.x = (float)(p.x - MIN_X) / (MAX_X - MIN_X) * screenx;
+			p.y = (float)(p.y - MIN_Y) / (MAX_Y - MIN_Y) * screeny;
 			m_inject.touch_move(p.x, p.y);
 			//sent(p.x, p.y, "move");
 			realpoints_buffer.push_back(p);
@@ -729,7 +647,7 @@ const int PRESS_THRESHOLD = 40000;
 const int NORMAL_LOWERBOUND = 18000;
 const int NORMAL_UPPERBOUND = 35000;
 int touchSum;
-bool spinFlag = false, wrongFrameFlag = true;
+bool spinFlag = false;
 
 bool isClockwise(double last, double now) {
 	bool ans = now > last;
@@ -832,16 +750,12 @@ void Viewer::displayFrameCV(Frame &frame) {
 	Mat input;
 	input = cv::Mat(GRID_RES_Y, GRID_RES_X, CV_32S, frame.capacity);
 	input.convertTo(input, CV_32F);
+	input = input / 50;
 
 	int sum = matSum<float>(input);                    //计算该帧电容和作为判断帧可靠性的依据
 	//cout << "sum = " << sum << endl;
 
-	if (lastsum - sum > 20000 && wrongFrameFlag)
-	{
-		wrongFrameFlag = false;
-		return;
-	}
-
+	/*
 	/////////////////////////////////////check press//////////////////////////////////////////////
 	if (lastsum < touchSum + PRESS_THRESHOLD && sum >= touchSum + PRESS_THRESHOLD) {
 		cout << "double click!!!!" << endl;
@@ -856,7 +770,8 @@ void Viewer::displayFrameCV(Frame &frame) {
 		return;
 	}
 	//////////////////////////////////////////////////////////////////////////////////////////////
-
+	*/
+	/*
 	Point newsum(frame.frameID, sum);
 	sums_buffer.push_back(newsum);
 	if (sums_buffer.size() > 1500) {
@@ -865,15 +780,18 @@ void Viewer::displayFrameCV(Frame &frame) {
 	if (stablepoints_buffer.size() > 6) {
 		stablepoints_buffer.clear();
 	}
+	*/
+	//bool isDirty = judgeDirty(sum);
+	bool isDirty = (sum > 32000);//判断该帧是否足够可靠，以确定耳朵是否抬起
 
-	bool isDirty = judgeDirty(sum);                    //判断该帧是否足够可靠，以确定耳朵是否抬起
-	//cout << isDirty << endl;
 
 	if (isDirty)
 	{
+		/*
 		if (sum < dirtylow) {
 			dirtylow = sum;
 		}
+		*/
 
 		Mat& binaryImage = Image[now];
 		Mat& lastImage = Image[last];
@@ -883,12 +801,13 @@ void Viewer::displayFrameCV(Frame &frame) {
 
 		Point result;
 		resize(input, lanc, Size(), 20.0, 20.0, INTER_LANCZOS4);
-		threshold(lanc, binaryImage, 200, 0, THRESH_TOZERO);        //gray
+		threshold(lanc, binaryImage, 70, 0, THRESH_TOZERO);        //gray
 		binaryImage.convertTo(binaryImage, CV_8U);
 		//imshow("image", binaryImage);
 		//waitKey(5);
 
-		//here we go
+		/*
+		//check spin. here we go
 		for (int i = 0; i < clockwise.size(); i++)
 		{
 			bool cw = clockwise.front();
@@ -926,7 +845,7 @@ void Viewer::displayFrameCV(Frame &frame) {
 			{
 				spinFlag = false;
 				touchSum = sum;
-				sendTCP(true);
+				//sendTCP(true);
 			}
 			last_dirty = isDirty;
 			deltasum = sum - lastsum;
@@ -934,11 +853,11 @@ void Viewer::displayFrameCV(Frame &frame) {
 			return;
 		//}
 		//here we stop
+		*/
 
 		if (!last_dirty)                                         //触摸开始
 		{
-			sendTCP(true);
-			wrongFrameFlag = true;
+			//sendTCP(true);
 			touchSum = sum;
 			frame_count = 0;
 			has_find_pattern = findPattern(binaryImage, patternRect, firstTouch);
@@ -958,13 +877,13 @@ void Viewer::displayFrameCV(Frame &frame) {
 			{
 				Point want;
 				calcFirstPoint(firstTouch, want);
-				restrict(want, 0, 320, 0, 560);
+				restrict(want, 0, lenx, 0, leny);
 
 				trackerInit(tracker[0], binaryImage, patternRect);
 				trackerInit(tracker[1], binaryImage, patternRect);
 				pattern = binaryImage(patternRect);
 
-				Point real_result(want.x / 320.0 * 1080.0, want.y / 560.0 * 1920.0);
+				Point real_result(want.x * mulx, want.y * muly);
 
 				//record the first point
 				firstPoint.x = want.x;
@@ -973,8 +892,8 @@ void Viewer::displayFrameCV(Frame &frame) {
 				//circle(tmp, Point(patternRect.x + cp.x, patternRect.y + cp.y), 5, Scalar(255, 0, 255), -1);
 
 				result = last_result = Point(want.x, want.y);
-				result.x = result.x / 320.0 * 1080.0;
-				result.y = result.y / 560.0 * 1920.0;
+				result.x = result.x * mulx;
+				result.y = result.y * muly;
 
 				if (result.x < MIN_X || result.x > MAX_X || result.y < MIN_Y || result.y > MAX_Y)
 				{
@@ -985,8 +904,8 @@ void Viewer::displayFrameCV(Frame &frame) {
 				last_point[0].x = last_point[1].x = patternRect.x;
 				last_point[0].y = last_point[1].y = patternRect.y;
 
-				stablepoints_buffer.push_back(newsum);
-				stablesum = sum;
+				//stablepoints_buffer.push_back(newsum);
+				//stablesum = sum;
 
 			}
 			else return;
@@ -1044,12 +963,12 @@ void Viewer::displayFrameCV(Frame &frame) {
 				}
 
 				ptmp = box_point - last_box_point + last_result;
-				restrict(ptmp, 0, 320, 0, 560);
+				restrict(ptmp, 0, lenx, 0, leny);
 				result = ptmp;
 
 				//result without rotated
-				result.x = result.x / 320.0 * 1080.0;
-				result.y = result.y / 560.0 * 1920.0;
+				result.x = result.x * mulx;
+				result.y = result.y * muly;
 				rectangle(binaryImage, box, Scalar(255, 0, 0), 2, 1);
 
 			}
@@ -1095,11 +1014,11 @@ void Viewer::displayFrameCV(Frame &frame) {
 					last_point[tracker_now] = last_point[tracker_last] = box_point;
 				}
 
-				restrict(result, 0, 320, 0, 560);
+				restrict(result, 0, lenx, 0, leny);
 
 				//result without rotated
-				result.x = result.x / 320.0 * 1080.0;
-				result.y = result.y / 560.0 * 1920.0;
+				result.x = result.x * mulx;
+				result.y = result.y * muly;
 
 			}
 
@@ -1124,21 +1043,21 @@ void Viewer::displayFrameCV(Frame &frame) {
 			realpoints_buffer.clear();
 			dirtylow = 50000;
 			spinFlag = false;
-			sendTCP(false);
+			//sendTCP(false);
 		}
 		else
 		{
 			if (last_dirty)
 			{
 				sendPoint(true);
-				sendTCP(false);
+				//sendTCP(false);
 			}
 		}
 
 		if (last_dirty) {
 			//m_inject.touch_up();
 			//sent(0, 0, "up");
-			stablepoints_buffer.push_back(newsum);
+			//stablepoints_buffer.push_back(newsum);
 		}
 	}
 

@@ -31,15 +31,14 @@ void viewer_udpinit() {
 
 void* runTCPrecv(void* nouse)
 {
-	Viewer::recvTCP();
+	Picker::getLogFromTCP();
 	return NULL;
 }
 
 int main(int argc, char **argv) {
 	//UDP
 	//viewer_udpinit();
-	
-	Viewer::initTCP();
+	Picker::initTCP();
 	cout << "input \"start\" to start" << endl;
 	string start;
 	cin >> start;
@@ -47,11 +46,11 @@ int main(int argc, char **argv) {
 
 	pthread_t threads[3];
 	pthread_mutex_init(&Picker::frames_mutex, NULL);
-	pthread_create(&threads[0], NULL, picker_getlog, NULL);
+	//pthread_create(&threads[0], NULL, picker_getlog, NULL);
 	pthread_create(&threads[1], NULL, run, NULL);
 	pthread_create(&threads[2], NULL, runTCPrecv, NULL);
 
-	pthread_join(threads[0], NULL);
+	//pthread_join(threads[0], NULL);
 	pthread_join(threads[1], NULL);
 	pthread_join(threads[2], NULL);
 	pthread_mutex_destroy(&Picker::frames_mutex);

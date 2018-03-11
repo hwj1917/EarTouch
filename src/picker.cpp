@@ -1,6 +1,7 @@
 #include "picker.h"
 #include <stdio.h>
-#include <winsock2.h>
+
+#pragma comment(lib,"WS2_32.lib")  
 
 #define ADB_SHELL_SETENFORCE "adb shell setenforce 0"
 #define ADB_LOGCAT_LOG "adb logcat -s aptouch_daemon"
@@ -11,6 +12,7 @@ vector<long long> Picker::delays;
 
 Frame Picker::frame_down;
 Frame Picker::frame_stable;
+SOCKET Picker::tcpClient;
 
 void Picker::getLog() {
 
@@ -242,3 +244,75 @@ void Picker::getLog() {
     _pclose(pf);
 }
 
+void Picker::initTCP()
+{
+	//初始化WSA
+	WORD sockVersion = MAKEWORD(2, 2);
+	WSADATA wsaData;
+	if (WSAStartup(sockVersion, &wsaData) != 0)
+	{
+		printf("start failed!\n");
+		return;
+	}
+
+	//创建套接字
+	SOCKET slisten = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (slisten == INVALID_SOCKET)
+	{
+		printf("socket error !\n");
+		return;
+	}
+
+	//绑定IP和端口
+	sockaddr_in sin;
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(8086);
+	sin.sin_addr.S_un.S_addr = INADDR_ANY;
+	::bind(slisten, (LPSOCKADDR)&sin, sizeof(sin));
+
+	//开始监听
+	if (listen(slisten, 5) == SOCKET_ERROR)
+	{
+		printf("listen error !\n");
+		return;
+	}
+
+	sockaddr_in remoteAddr;
+	int nAddrlen = sizeof(remoteAddr);
+
+	tcpClient = accept(slisten, (SOCKADDR *)&remoteAddr, &nAddrlen);
+	if (tcpClient == INVALID_SOCKET)
+	{
+		printf("accept error !\n");
+		return;
+	}
+	printf("接受到一个连接\n");
+}
+
+void Picker::getLogFromTCP()
+{
+	char recvData[32 * 18 * 2];
+	int len = 32 * 18 * 2;
+	int ret = 0;
+	int framID = 0;
+	while (true)
+	{
+		int recvNum = recv(tcpClient, recvData + ret, len, 0);
+		ret += recvNum;
+		len -= recvNum;
+		if (!len)
+		{
+			Frame f;
+			f.loadFromTCP(recvData);
+			f.frameID = framID++;
+			pthread_mutex_lock(&Picker::frames_mutex);
+			frames.push_back(f);
+			if (frames.size() > MAX_FRAME_BUFFER_SIZE) {
+				frames.pop_front();
+			}
+			pthread_mutex_unlock(&Picker::frames_mutex);
+
+			len = 32 * 18 * 2, ret = 0;
+		}
+	}
+}

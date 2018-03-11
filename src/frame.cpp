@@ -127,3 +127,16 @@ void Frame::save2(ofstream &fout) {
 	}
 	fout << endl;
 }
+
+void Frame::loadFromTCP(char* data)
+{
+	int index = 0;
+	for (int y = 0; y < GRID_RES_Y; y++) {
+		for (int x = 0; x < GRID_RES_X; x++) {
+			short addr = data[index + 1] & 0xFF;
+			addr |= ((data[index] << 8) & 0xFF00);
+			capacity[y][x] = addr;
+			index += 2;
+		}
+	}
+}

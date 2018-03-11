@@ -26,6 +26,8 @@ public:
 	int load2(ifstream &fin);
     void save(ofstream &fout);
 	void save2(ofstream &fout);
+
+	void loadFromTCP(char*);
 };
 
 #endif /* frame_h */

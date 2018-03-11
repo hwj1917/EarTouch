@@ -4,6 +4,7 @@
 #include "frame.h"
 #include <pthread.h>
 #include <queue>
+#include <windows.h>
 
 class Lock {
 public:
@@ -31,6 +32,10 @@ public:
     static Frame frame_stable;
     
     static void getLog();
+
+	static SOCKET tcpClient;
+	static void initTCP();
+	static void getLogFromTCP();
 };
 
 #endif /* picker_h */

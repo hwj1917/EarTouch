@@ -12,19 +12,17 @@ InjectEventController::InjectEventController()
 
 void InjectEventController::touch_down(int x, int y, int pressure)
 {
-	//cout << "down\n";
-	WinExec((ADB + "0 " + DEVICE + to_string(x) + " " + to_string(y)).c_str(), SW_NORMAL);
+	//WinExec((ADB + "0 " + DEVICE + to_string(x) + " " + to_string(y)).c_str(), SW_NORMAL);
 }
 
 void InjectEventController::touch_move(int x, int y, int pressure)
 {
-	WinExec((ADB + "1 " + DEVICE + to_string(x) + " " + to_string(y)).c_str(), SW_NORMAL);
+	//WinExec((ADB + "1 " + DEVICE + to_string(x) + " " + to_string(y)).c_str(), SW_NORMAL);
 }
 
 void InjectEventController::touch_up()
 {
-	//cout << "up\n";
-	WinExec((ADB + "2 " + DEVICE).c_str(), SW_NORMAL);
+	//WinExec((ADB + "2 " + DEVICE).c_str(), SW_NORMAL);
 }
 
 void InjectEventController::touch_double_click(int x, int y, int pressure)
@@ -46,9 +44,11 @@ void InjectEventController::swipe(int start_x, int start_y, int end_x, int end_y
 
 void InjectEventController::vibrate()
 {
+	/*
 	if (time(NULL) - last_vibrate > 2)
 	{
 		WinExec("adb shell am startservice -n com.hwj.foreartouch/com.hwj.foreartouch.MyService", SW_NORMAL);
 		last_vibrate = time(NULL);
 	}
+	*/
 }
